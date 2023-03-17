@@ -143,6 +143,31 @@ def Strang_splitting(U, dt, vals):
     
     return Unew
 
+#strang splitting routine as before, only it accepts data coded to be 
+#representing the large frame values. It is set in the comoving frame of 
+#reference and returns the results in terms of X and T.
+def Strang_splitting_large_frame(U, dT, vals):
+    
+    #needed constants
+    ac, v1, v2, v3, K1, K2 = vals
+
+    #solving map 1 for half time step:
+    U_hat = fft.fft(U)
+    w_hat = np.exp(-1j*K2*(v2/v1)*0.5*dT)*U_hat 
+    w  = fft.ifft(w_hat)
+    
+    #solving map 2 for full time step:
+    wnew = np.exp(1j*ac*(v3/v1)*dT*(abs(w))**2)*w
+    
+    #sovling map 1 for half time step again:
+    wnew_hat = fft.fft(wnew)
+    Unew_hat = np.exp(-1j*K2*(v2/v1)*0.5*dT)*wnew_hat
+    
+    Unew     = fft.ifft(Unew_hat) 
+    
+    return Unew
+
+
 #phase shift correction for carrier waves interaction study:
 def phase_shifts(c, w, e, env_A0, env_B0, dx):
     

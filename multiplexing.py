@@ -4,7 +4,7 @@ from time import time as clock
 from scipy import fft
 import the_functions as funcs
 
-k = np.array([1, -0.9])  #wavenumebers
+k = np.array([0.9, -1])  #wavenumebers
 w = np.sqrt(k**2 + 1)    #frequencies 
 c = k/w                  #group velocities
 
@@ -106,7 +106,6 @@ while t < tf:
     
     #Phase shift corrections for pulses A and B
     Phase_A, Phase_B = funcs.phase_shifts(c, w, e, env_A, env_B, dx)
-    Phase_A, Phase_B   = funcs.phase_shifts_soliton(x, t, c, w, e, A, B, x0)
     
     #approximation with shift correction
     u_approx_shift = env_A_approx*np.exp(1j*e*Phase_A) + env_B_approx*np.exp(1j*e*Phase_B)
@@ -127,15 +126,14 @@ while t < tf:
         
         plt.figure(plotnum)
         plt.plot(x, np.real(u),'r-', label = 'numerical')
-        plt.plot(x, np.real(u_approx_shift), "g--", label = 'nls-approx')
+        plt.plot(x, np.real(u_approx_shift), "g--", label = 'NLS-approx')
         plt.plot(x, profile, 'b--', label="envelope")
         plt.plot(x, -profile, 'b--')
-        plt.plot(x, e*Phase_B, "--", label= "phase for A")
-        plt.plot(x, e*Phase_A, "--", label = "phase for B")
+        plt.plot(x, e*Phase_B, "--", label= "Phase for A")
+        plt.plot(x, e*Phase_A, "--", label = "Phase for B")
         plt.xlim(-200,  200)
-        #plt.ylim(-0.21, 0.45)
         plt.legend(loc="best")
-        plt.title(f"cubic NLKG, $\epsilon$={e}, time = {np.round(t,3)}")
+        plt.title(f"Cubic NLKG (multiplexing), $\epsilon$={e}, time t = {np.round(t,3)}")
         plt.xlabel("x")
         plt.ylabel("u(x, t)") 
         plt.show()

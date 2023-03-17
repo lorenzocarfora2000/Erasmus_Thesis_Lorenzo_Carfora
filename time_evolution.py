@@ -3,10 +3,9 @@ import matplotlib.pyplot as plt
 from time import time as clock
 from scipy import fft
 import the_functions as funcs
-from scipy.integrate import trapz
 
 k = 0.3    #wavenumber
-ac = 1     #cubic nonlinearity parameter
+ac = -1     #cubic nonlinearity parameter
 
 e = 0.1    #amplitude (0< e << 1)
 
@@ -45,7 +44,7 @@ t0, tf = 0., 1000      #initial and final time
 dt = 0.025            #desired timestep
 
 #soliton initial conditions
-
+"""
 env0  = funcs.soliton(e*x, vals_env)
 u0    = e*funcs.NLS_approx(x, vals_NLS, funcs.soliton)
 v0    = e*funcs.NLS_approx_dt(x, vals, funcs.soliton)
@@ -58,7 +57,7 @@ env0  = funcs.square(e*x, vals_env)
 u0    = e*funcs.NLS_approx(x, vals_NLS, funcs.square)
 v0    = e*funcs.NLS_approx_dt(x, vals, funcs.square)
 title = "square"
-"""
+
 
 if ac== -1: title = "defocusing "+title
 
@@ -75,9 +74,10 @@ u0x    = fft.ifft(1j*k1*u0_hat)
 
 #Kinetic, potential and strain energies of NLKG. 
 #The total energy is their sum
-KE0 = funcs.Lp_norm(v0, 2, x)**2
-POT0 = -ac*0.25*trapz(u0**4 + np.conj(u0)**4, x)#-ac*0.5*funcs.Lp_norm(u0**2, 2, x)**2
-STRAIN0 = funcs.Lp_norm(u0, 2, x)**2 + funcs.Lp_norm(u0x, 2, x)**2
+KE0     =   funcs.Lp_norm(v0, 2, x)**2 + funcs.Lp_norm(u0x, 2, x)**2
+STRAIN0 =   funcs.Lp_norm(u0, 2, x)**2 
+POT0    =   -ac*0.5*funcs.Lp_norm(u0, 4, x)**4
+
 E_TOT0  = KE0 + POT0 + STRAIN0
 
 KE_list     = [KE0]
@@ -90,8 +90,6 @@ E_TOT_list  = [E_TOT0]
 #derivative of envelope over space via spectra differentiation
 env0_hat = fft.fft(env0) 
 env0x    = fft.ifft(1j*K1*env0_hat) 
-
-P_NLS0 = funcs.Lp_norm(env0, 2, x) #(initial) L2 norm, the Mass
 
 E_NLS0 = abs(v2*funcs.Lp_norm(env0x, 2, x)**2 - ac*v3*0.5*funcs.Lp_norm(env0, 4, x)**4) 
 E_NLS_list = [E_NLS0] #initial energy
@@ -161,10 +159,11 @@ while t < tf:
         u_hat = fft.fft(u) 
         ux    = fft.ifft(1j*k1*u_hat) 
         
-        KE = funcs.Lp_norm(v, 2, x)**2
-        POT = -ac*0.25*trapz(u0**4 + np.conj(u0)**4, x) # -ac*0.5*funcs.Lp_norm(u**2, 2, x)**2
-        STRAIN = funcs.Lp_norm(u, 2, x)**2 + funcs.Lp_norm(ux, 2, x)**2
+        KE     =   funcs.Lp_norm(v, 2, x)**2 + funcs.Lp_norm(ux, 2, x)**2
+        STRAIN =   funcs.Lp_norm(u, 2, x)**2 
+        POT    =   -ac*0.5*funcs.Lp_norm(u, 4, x)**4
         E_TOT  = KE + POT + STRAIN
+    
         
         KE_list.append(KE)     
         POT_list.append(POT)       
@@ -180,7 +179,7 @@ while t < tf:
 
         E_NLS = abs(v2*funcs.Lp_norm(envx, 2, x)**2 - ac*v3*0.5*funcs.Lp_norm(env, 4, x)**4)
         E_NLS_list.append(E_NLS)
-        
+            
         H5_norm_list.append(funcs.Hp_norm(2*e*env, 5, x))
         L2_norm_list.append(funcs.Lp_norm(2*e*env, 2, x))
         
@@ -201,13 +200,13 @@ STRAIN_list = np.array(STRAIN_list).real
 E_TOT_list = np.array(E_TOT_list).real      
 
 plt.figure(plotnum)
-plt.title("cubic NLKG Energy conservation over time, "+title)
+plt.title("Cubic NLKG Energy conservation over time, "+title)
 plt.plot(time, KE_list, "b.-",       label = "kinetic" )
 plt.plot(time, POT_list , "b--",     label = "potential")
 plt.plot(time, STRAIN_list, "g-.",   label = "strain" )
 plt.plot(time, E_TOT_list, "r-",    label = "total" )
 plt.legend(loc = "best")
-plt.xlabel("time t")
+plt.xlabel("Time t")
 plt.ylabel("Energy")
 plt.grid(True)
 plt.show()
@@ -216,7 +215,7 @@ plt.show()
 E_change = np.log(abs(1-E_TOT_list[1:]/E_TOT0))
 
 plt.figure(plotnum+1)
-plt.title("Cubic NLKG Total energy change, "+title+" solution")
+plt.title("Cubic NLKG Total energy change, "+title)
 plt.plot(time[1:], E_change)
 plt.grid(True)
 plt.xlabel("Time t")
@@ -225,22 +224,21 @@ plt.ylabel("Energy change")
 time_slow = np.array(time)*(e**2)
 
 plt.figure(plotnum+2)
-plt.title("NLS energy, stored in the "+title+" envelope")
-plt.plot(time_slow, E_NLS_list, label = "NLS energy")
+plt.title("NLS energy of "+title+" envelope")
+plt.plot(time_slow, E_NLS_list)
 plt.xlabel("Slow time T")
 plt.ylabel("Energy")
-plt.legend(loc= "best")
 plt.grid(True)
 
 plt.figure(plotnum+3)
-plt.title("$H^5$ Sobolev norm consistency of "+title+" envelope")
+plt.title("$H^5$ Sobolev norm of "+title+" envelope")
 plt.plot(time_slow, H5_norm_list)
 plt.grid(True)
 plt.xlabel("Slow time T")
 plt.ylabel("$H^5$ norm")
 
 plt.figure(plotnum+4)
-plt.title("$L^2$ norm consistency of "+title+" envelope")
+plt.title("$L^2$ norm of "+title+" envelope")
 plt.plot(time_slow, L2_norm_list)
 plt.grid(True)
 plt.xlabel("Slow time T")

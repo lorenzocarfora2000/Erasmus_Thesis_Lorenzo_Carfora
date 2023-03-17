@@ -45,8 +45,8 @@ k1 = 2*np.pi*fft.fftfreq(Nx, d=dx)
 vals_rk4 = [dx, ac]
 def sup_err_calc(e):
     
-    vals_A = A[0], B[0], gamma, e, k[0], w[0], c[0], v1[0], v2[0], v3
-    vals_B = A[1], B[1], gamma, e, k[1], w[1], c[1], v1[1], v2[1], v3
+    vals_A = A[0], B[0], gamma, e, k[0], w[0], c[0], ac, v1[0], v2[0], v3
+    vals_B = A[1], B[1], gamma, e, k[1], w[1], c[1], ac, v1[1], v2[1], v3
     
     vals_env_A, vals_NLS_A = vals_A[:3], vals_A[:7]
     vals_env_B, vals_NLS_B = vals_B[:3], vals_B[:7]
@@ -158,11 +158,11 @@ if __name__ == '__main__':
     plt.figure(3)
     plt.plot(e_list, sup_err_list, ".", label="No Correction")
     plt.plot(e_list, sup_err_list_shift, ".", label="Correction")
-    plt.xlabel("Amplitude parameter $\epsilon$, 0 < $\epsilon$ <<1")
-    plt.ylabel("Superior error")
-    plt.title("Multiplexing error consistency, cubic NLKG, T0 ={}".format(T)) 
-    plt.plot(x_fit, y_fit, "--", label = "No correction fit, $\epsilon$^{}".format(b) )
-    plt.plot(x_fit, y_fit_shift, "--", label = "Correction fit, $\epsilon$^{}".format(b_shift) )
+    plt.xlabel("Amplitude parameter, 0 < $\epsilon$ <<1")
+    plt.ylabel("$C_b^0$ norm of superior error")
+    plt.title(f"Multiplexing error consistency, cubic NLKG, T$_0$ ={T}") 
+    plt.plot(x_fit, y_fit, "--", label = f"No correction fit, $\epsilon^b$, b={b}" )
+    plt.plot(x_fit, y_fit_shift, "--", label = f"Correction fit, $\epsilon^b$, b={b_shift}")
     plt.legend(loc = "best")
     
     poptH, pcovH = curve_fit(fitter, e_list, sup_H_err_list)
@@ -177,9 +177,9 @@ if __name__ == '__main__':
     plt.figure(4)
     plt.plot(e_list, sup_H_err_list, ".", label="No Correction")
     plt.plot(e_list, sup_H_err_list_shift, ".", label="Correction")
-    plt.xlabel("Amplitude parameter $\epsilon$, 0 < $\epsilon$ <<1")
-    plt.ylabel("Superior error, with $H^1$ Sobolev norm")
-    plt.title("Multiplexing H1 norm error consistency, cubic NLKG, T0 ={}".format(T)) 
-    plt.plot(x_fit, y_fit, "--", label = "No correction fit, $\epsilon$^{}".format(bH) )
-    plt.plot(x_fit, y_fit_shift, "--", label = "Correction fit, $\epsilon$^{}".format(bH_shift) )
+    plt.xlabel("Amplitude parameter, 0 < $\epsilon$ <<1")
+    plt.ylabel("$H^1$ norm of superior error")
+    plt.title(f"Multiplexing $H^1$ norm error consistency, cubic NLKG, T$_0$ ={T}") 
+    plt.plot(x_fit, y_fit, "--", label = f"No correction fit, $\epsilon^b$, b={bH}" )
+    plt.plot(x_fit, y_fit_shift, "--", label = f"Correction fit, $\epsilon^b$, b={bH_shift}")
     plt.legend(loc = "best")
