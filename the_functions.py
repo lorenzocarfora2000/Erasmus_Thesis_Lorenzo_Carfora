@@ -2,30 +2,30 @@ import numpy as np
 from scipy import fft
 from scipy.integrate import trapz
 
-#exponential function
+#Exponential function
 Exp = lambda x, t, k, w : np.exp(1j*(k*x - w*t))
 
-#hyperbolic secant function
+#Hyperbolic secant function
 sech = lambda x : 1/np.cosh(x)
 
-#soliton solution initial condition of the NLS
+#Soliton solution initial condition for NLSE
 def soliton(X, vals):
     A, B, gamma = vals
     return A*sech(B*X)
 
-#square solution
+#Square solution initial condition for NLSE
 def square(X, vals):
     A, B, gamma = vals
     return 0.25*A*(1-np.tanh(B*(X-11*gamma))*np.tanh(B*(X+11*gamma)))
 
 
-#NLKG equation approximation using the soliton solution:
+#NLKGE equation approximation using the initial conditions:
 def NLS_approx(x, vals, envelope):
     
-    #needed constants
+    #Needed constants
     A, B, gamma, e, k, w, c = vals
     
-    #defining slow space coords
+    #Defining slow space coords
     X = e*x
     
     env = envelope(X, [A, B, gamma])
@@ -33,7 +33,7 @@ def NLS_approx(x, vals, envelope):
     
     return f + np.conj(f) 
 
-#time derivative of the NLKG approximation using soliton solution
+#Time derivative of the NLKGE approximation via Fourier transformation
 def NLS_approx_dt(x, vals, envelope):
     
     #needed constants
@@ -42,13 +42,7 @@ def NLS_approx_dt(x, vals, envelope):
     #slow space and time coords
     X = e*x
     
-    ### first and second derivative of soliton envelope
-    """
-    env = envelope(X, T, [A, B, gamma])
-    env_x = -B*env*np.tanh(B*X)
-    env_xx = (B**2)*env*(np.tanh(B*X)**2 - sech(B*X)**2)
-    """
-    ### first and second derivative of envelope via Fourier transform
+    ### first and second derivative of the envelope via Fourier transform
     env = envelope(X, [A, B, gamma])
     env_hat = np.fft.fft(env)
     
@@ -65,10 +59,10 @@ def NLS_approx_dt(x, vals, envelope):
 
     return U + np.conj(U) 
 
-# L_p norm, requires function u, degree p and xarray x
+#L_p norm, requires function u, degree p and xarray x
 def Lp_norm(u, p, x): return trapz( abs(u)**p , x)**(1/p)
     
-# Sobolev H_p norm
+#Sobolev H_p norm
 def Hp_norm(u, p, x):
     Nx, dx = len(x), x[1]-x[0] 
     
@@ -87,17 +81,17 @@ def Hp_norm(u, p, x):
             
     return np.sqrt(I)   
 
-#second spatial derivative function, using the discretisation in physical space
+#Second spatial derivative function, using the discretisation in physical space
 def Del(u, dx): 
     return (np.roll(u, -1) -2*u + np.roll(u, 1))/dx**2
 
-#nonlinear cubic Klein gordon equation:
+#Nonlinear cubic Klein gordon equation:
 def NLKG(u, vals):
     dx, ac = vals
     dvdt = Del(u, dx) - u + ac*u**3
     return dvdt
 
-#Rk4 routine for the NLKG equation:
+#Rk4 routine for the NLKGE:
 def RK4(t, u, v, dt, vals, function):
     
     #RK4 routine
@@ -115,95 +109,93 @@ def RK4(t, u, v, dt, vals, function):
     tnew = t+dt
     return tnew, unew, vnew
 
-#Routine for the NLS equation calculation
+#Routine for the NLSE calculation
 #(input the initial condition in w.r.t X, dt and vals. K1, K2 are the 
 #space wavelength numbers w.r.t X.)
 def Strang_splitting(U, dt, vals):
     
-    #needed constants
+    #Needed constants
     e, c, ac, v1, v2, v3, K1, K2 = vals
     
-    #the NLS is expressed w.r.t T-scale, to convert to t-scale:
-    C = c/e 
+    #the NLSE is expressed w.r.t T-scale, to convert to t-scale:
+    C  = c/e 
     dT = (e**2)*dt
     
-    #solving map 1 for half time step:
+    #Solving map 1 for half time step:
     U_hat = fft.fft(U)
     w_hat = np.exp(-1j*(K2*(v2/v1)+C*K1)*0.5*dT)*U_hat 
-    w  = fft.ifft(w_hat)
+    w     = fft.ifft(w_hat)
     
-    #solving map 2 for full time step:
+    #Solving map 2 for full time step:
     wnew = np.exp(1j*ac*(v3/v1)*dT*(abs(w))**2)*w
     
-    #sovling map 1 for half time step again:
+    #Solving map 1 for half time step again:
     wnew_hat = fft.fft(wnew)
     Unew_hat = np.exp(-1j*(K2*(v2/v1)+C*K1)*0.5*dT)*wnew_hat
     
     Unew     = fft.ifft(Unew_hat) 
-    
     return Unew
 
-#strang splitting routine as before, only it accepts data coded to be 
+#Strang splitting routine as before, only it accepts data coded to be 
 #representing the large frame values. It is set in the comoving frame of 
 #reference and returns the results in terms of X and T.
 def Strang_splitting_large_frame(U, dT, vals):
     
-    #needed constants
+    #Needed constants
     ac, v1, v2, v3, K1, K2 = vals
 
-    #solving map 1 for half time step:
+    #Solving map 1 for half time step:
     U_hat = fft.fft(U)
     w_hat = np.exp(-1j*K2*(v2/v1)*0.5*dT)*U_hat 
     w  = fft.ifft(w_hat)
     
-    #solving map 2 for full time step:
+    #Solving map 2 for full time step:
     wnew = np.exp(1j*ac*(v3/v1)*dT*(abs(w))**2)*w
     
-    #sovling map 1 for half time step again:
+    #Solving map 1 for half time step again:
     wnew_hat = fft.fft(wnew)
     Unew_hat = np.exp(-1j*K2*(v2/v1)*0.5*dT)*wnew_hat
     
     Unew     = fft.ifft(Unew_hat) 
-    
     return Unew
 
 
-#phase shift correction for carrier waves interaction study:
+#Phase shift correction for carrier waves interaction study:
 def phase_shifts(c, w, e, env_A0, env_B0, dx):
     
-    #the constants characterising the the phase shifts of pulses A and B:
+    #The constants characterising the the phase shifts of pulses A and B:
     C = 3/(w*(c - np.flip(c)))
     
-    #envelope reordering, taking the absolute value squared:
+    #Envelope reordering, taking the absolute value squared:
     envs = np.vstack([env_A0, env_B0])
     absolute = abs(envs)**2
     
-    #calculation of the area under under the function for each step taken.
+    #Calculation of the area under under the function for each step taken.
     integral = (absolute[:, :-1] + absolute[:, 1:])*dx/2
     
     #the areas approximately equal to zero are set directly to zero
     integral = np.where(integral<1e-9, 0, integral )
     
-    #since pulses are localised, we expect that the given array is already
+    #Since pulses are localised, we expect that the given array is already
     #close to zero at the left boundary (limit for -inf):
     integral = np.hstack([np.array([[0], [0]]), integral])
     
-    #find position of values that are big enough to be considered
+    #Find position of values that are big enough to be considered
     nonzeros_pos = np.where(integral != 0) 
     
-    #positions of values for the single A and B pulses
+    #Positions of values for the single A and B pulses
     pos_A = nonzeros_pos[1][np.where(nonzeros_pos[0]==0)]
     pos_B = nonzeros_pos[1][np.where(nonzeros_pos[0]==1)]
     
-    #putting the pulses A and B values in separate arrays:
+    #Putting the pulses A and B values in separate arrays:
     nonzeros_A = integral[0, pos_A]
     nonzeros_B = integral[1, pos_B]
     
-    #boundaries of the effective domains of localised A and B
+    #Boundaries of the effective domains of localised A and B
     lm_A, lp_A = pos_A[0], pos_A[-1]
     lm_B, lp_B = pos_B[0], pos_B[-1]
     
-    #calculate integral result for the influencing area
+    #Calculate integral result for the influencing area
     result_A, result_B = np.copy(nonzeros_A), np.copy(nonzeros_B)
     for i in range(len(result_A)):
         result_A[i] = np.sum(nonzeros_A[:(i+1)])
@@ -213,7 +205,7 @@ def phase_shifts(c, w, e, env_A0, env_B0, dx):
     integral[0, pos_A] = result_A
     integral[1, pos_B] = result_B
     
-    #null spaces could be present in between the values, as dips in functions
+    #Null spaces could be present in between the values, as dips in functions
     #describing A and B may occur: the following routine corrects that:
     A, B = integral[0, lm_A:lp_A],  integral[1, lm_B:lp_B]
     if bool(A.all()) == False:
@@ -231,34 +223,20 @@ def phase_shifts(c, w, e, env_A0, env_B0, dx):
     integral[0, lm_A:lp_A] = A
     integral[1, lm_B:lp_B] = B
     
-    #the uninfluencing parts of the integral stay zero before,   
-    #and remain with the same as the last calculated result after
+    #The uninfluencing parts of the integral stay zero before,   
+    #and remain with the same result as the last calculated one after
     integral[0, pos_A[-1]:] = result_A[-1]
     integral[1, pos_B[-1]:] = result_B[-1]
     
-    #row 0 is the integral of |A|^2, row 1 is the integral of |B^2|
+    #Row 0 is the integral of |A|^2, row 1 is the integral of |B^2|
     
-    #the integral is multiplied by the constants accordingly to be equal to 
+    #The integral is multiplied by the constants accordingly to be equal to 
     #the phase shifts of A and B
     integral[0] *= e*C[1]
     integral[1] *= e*C[0]
     
-    #shifting for phase correction normalisation
+    #Shifting for phase correction normalisation
     integral[0] -= np.min(integral[0])
     integral[1] -= np.min(integral[1])
         
     return integral[1], integral[0]
-
-
-def phase_shifts_soliton(x, t, c, w, e, A, B, x0):
-    
-    #the constants characterising the the phase shifts of pulses A and B:
-    C = 3/(2*w*(c - np.flip(c)))* np.flip(A**2/B)
-    
-    shift_A = C[0]*(np.tanh(e*(x - x0[1] - c[1]*t))+1)
-    shift_B = C[1]*(np.tanh(e*(x - x0[0] - c[0]*t))+1)
-    
-    shift_A -= np.min(shift_A)
-    shift_B -= np.min(shift_B)
-    
-    return shift_A, shift_B

@@ -6,26 +6,23 @@ import multiprocessing as mp
 import the_functions as funcs
 from scipy import fft
 
-#calculation done for the soliton solution
+k = np.array([0.9, -1])  #Wavenumbers
+w = np.sqrt(k**2 + 1)    #Frequencies 
+c = k/w                  #Group velocities
 
-k = np.array([0.9, -1])
-w = np.sqrt(k**2 + 1)    #frequency 
-c = k/w                  #group velocity
+ac = 1                   #cubic nonlinearity sign
+e = 0.1                  #Amplitude (0< e << 1)
 
-
-ac = 1     #cubic nonlinearity parameter
-e = 0.1   #amplitude (0< e << 1)
-
-#NLS parameters
+#NLSE parameters
 gamma = 0.5
 v1, v2, v3 = 2*w, (1-c**2) ,  3
 A, B = np.sqrt(2*gamma*v1/v3) , np.sqrt(gamma*v1/v2) 
 
-
+#Initial displacements
 x0 = [-55, 55]
 x0_A, x0_B = x0[0], x0[1]
 
-## spatial array
+##Spatial array
 Lx = 1000
 dx = 0.02
 
@@ -39,8 +36,13 @@ dt = 0.015
 
 dx = x[1]-x[0]
 
-
+#Wavenumber array for Fourier transformations
 k1 = 2*np.pi*fft.fftfreq(Nx, d=dx)
+
+#The procedure is the same as in superior_error_behaviour.py, only adapted for 
+#the multiplexing case. The sup_err_calc function is also modified to return
+#the C^0_b and H^1 norms of the error deviation for both the cases with 
+#and without phase correction.
 
 vals_rk4 = [dx, ac]
 def sup_err_calc(e):
@@ -50,7 +52,6 @@ def sup_err_calc(e):
     
     vals_env_A, vals_NLS_A = vals_A[:3], vals_A[:7]
     vals_env_B, vals_NLS_B = vals_B[:3], vals_B[:7]
-    
     
     env_A  = funcs.soliton(e*(x-x0_A), vals_env_A)
     u_A0    = e*funcs.NLS_approx(x-x0_A, vals_NLS_A, funcs.soliton)
@@ -119,35 +120,41 @@ def sup_err_calc(e):
     print(f"done with {e}")
     return superior_error, superior_H_error, superior_error_shift, superior_H_error_shift
 
-
+#list of amplitude parameters
 e_list = np.linspace(0.07, 0.1, 4)
 
 if __name__ == '__main__':
     
     start = clock()
     
+    #Parallel calculation, sup_err_set contains all the results for all the
+    #e_list parameters
     p = mp.Pool()
     sup_err_set = p.map(sup_err_calc,  e_list)
     p.close()
     p.join()
     end = clock()
     
+    #Separating the results derivated results over e_list in lists
     sup_err_list, sup_H_err_list, sup_err_list_shift, sup_H_err_list_shift = np.array(sup_err_set).T
     
     print(f"time taken: {end-start} seconds")
     
+    #Append the trivial solution of e = 0.
     e_list = np.append(0, e_list)
     sup_err_list = np.append(0, sup_err_list)
     sup_H_err_list = np.append(0, sup_H_err_list)
     sup_err_list_shift = np.append(0, sup_err_list_shift)
     sup_H_err_list_shift = np.append(0, sup_H_err_list_shift)
 
-    fitter = lambda x, a, b: a*x**b
+    fitter = lambda x, a, b: a*x**b   #Fitting function 
 
+    #Fitting and plotting for the error in C^0 (no correction)
     popt, pcov = curve_fit(fitter, e_list, sup_err_list)
     x_fit = np.linspace(0, e_list[-1], 100)
     y_fit = fitter(x_fit, *popt)
     
+    #Also plotting for the error in C^0 (with correction)
     popt_shift, pcov_shift = curve_fit(fitter, e_list, sup_err_list_shift)
     y_fit_shift = fitter(x_fit, *popt_shift)
     
@@ -165,9 +172,12 @@ if __name__ == '__main__':
     plt.plot(x_fit, y_fit_shift, "--", label = f"Correction fit, $\epsilon^b$, b={b_shift}")
     plt.legend(loc = "best")
     
+    
+    #Fitting and plotting for the error in H^1 (no correction)
     poptH, pcovH = curve_fit(fitter, e_list, sup_H_err_list)
     y_fit = fitter(x_fit, *poptH)
     
+    #Also plotting for the error in H^1 (with correction)
     poptH_shift, pcovH_shift = curve_fit(fitter, e_list, sup_H_err_list_shift)
     y_fit_shift = fitter(x_fit, *poptH_shift)
 

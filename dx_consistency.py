@@ -8,28 +8,31 @@ from scipy import fft
 from scipy.stats import linregress as lin_fit
 import the_functions as funcs
 
-k = 0.3     #wavenumber
-ac = -1     #cubic nonlinearity parameter
+k = 0.3     #Wavenumber
+ac = -1     #Cubic nonlinearity sign
 
 #NLS parameters:
-w = np.sqrt(k**2 + 1)    #frequency 
-c = k/w                  #group velocity
+w = np.sqrt(k**2 + 1)    #Frequency 
+c = k/w                  #Group velocity
 
 v1, v2, v3 = 2*w, 1-c**2 ,  3
 gamma = 0.5
 A, B = np.sqrt(2*gamma*v1/v3) , np.sqrt(gamma*v1/v2) 
 
-
-Lx = 1000       #boundaries for the x-space 
+##Spatial array
+Lx = 1000       #Boundaries for the x-space 
 dt = 0.01
 t0, T = 0., 1   #initial standard time and slow final time
 
-
+#list ofmplitude parameters e
 e_list = np.linspace(0.04, 0.1, 4)
 e_list0 = np.append(0, e_list)
 
-#returns the superior error for a given dx and e value
+#The dx_consistency function returns the superior error 
+#for a given dx and e value
+
 #title = "soliton"
+#title = "square"
 title = "defocusing square"
 def dx_consistency(vals):
     dx, e = vals
@@ -39,12 +42,13 @@ def dx_consistency(vals):
     x = 2*Lx*np.arange(-int(Nx/2), int(Nx/2))/Nx
     dx = x[1]-x[0]
     
-    #canstants reordering
+    #Constants reordering
     values = A, B, gamma, e, k, w, c, ac, v1, v2, v3
     values_env = values[:3]
     values_NLS = values[:7]
+    
+    #Select initial condition solution
     """
-    #select initial condition solution
     env  = funcs.soliton(e*x, values_env)
     u0 =    e*funcs.NLS_approx(x, values_NLS, funcs.soliton)
     v0 =    e*funcs.NLS_approx_dt(x, values, funcs.soliton)
@@ -54,9 +58,12 @@ def dx_consistency(vals):
     u0 =    e*funcs.NLS_approx(x, values_NLS, funcs.square)
     v0 =    e*funcs.NLS_approx_dt(x, values, funcs.square)
     
-    #setting up for time evolution
+    #Setting up for time evolution
     t, tf, u, v = 0., (T/e**2), u0, v0
     
+    
+    #Wavenumber arrays for the Fourier transformation 
+    #from "standard" and "large" space
     k1 = 2*np.pi*fft.fftfreq(Nx, d=dx)
     K1 = k1/e
     K2 = K1**2
@@ -68,7 +75,7 @@ def dx_consistency(vals):
      
     vals_rk4 = [dx, ac]
     
-    #time evolution
+    #Time evolution
     while t < tf:
     
         t, u, v = funcs.RK4(t, u, v, dt, vals_rk4, funcs.NLKG)
@@ -79,18 +86,19 @@ def dx_consistency(vals):
         u_approx += np.conj(u_approx)
         
         error = max(abs(u-u_approx))
-        H_error = funcs.Hp_norm(u-u_approx, 1, x) #sobolev norm error
+        H_error = funcs.Hp_norm(u-u_approx, 1, x) #Sobolev norm error
     
         if error> superior_error: superior_error = error 
         if H_error> superior_H_error: superior_H_error = H_error 
     
     print(f"done with {dx, e}")
     
-    #superior errors in C^0 and H^1 spaces returned based on dx and e 
+    #Superior errors in C^0 and H^1 spaces returned based on dx and e 
     return superior_error, superior_H_error
 
-#returns the fitting parameters for a given list of superior values over epsilon
+#Returns the fitting parameters for a given list of superior values over epsilon
 def fitter(sup_err_list):
+    
     sup_err_list0 = np.append(0, sup_err_list)
 
     fitter = lambda x, C, b: C*x**b
@@ -109,17 +117,17 @@ if __name__ == '__main__':
     couple = list(product(dx_list, e_list))
     
     i = clock()
-    #parrallel calculation of the resulting superior errors:
+    #Parallel calculation of the resulting superior errors:
     p = mp.Pool()
     result = p.map(dx_consistency, couple)
     p.close()
     p.join()
     
-    #superior errors divided in H1 and C^0 norms results
+    #Superior errors divided in H^1 and C^0 norms results
     result = np.array(result)
     sup_err_res, sup_H_err_res = np.array(result).T
     
-    #lists containing lists of superior errors, each for a different dx step
+    #Lists containing lists of superior errors, each for a different dx step
     sup_err_lists_set = np.split(sup_err_res, dx_n)
     sup_H_err_lists_set = np.split(sup_H_err_res, dx_n)
     
@@ -127,8 +135,8 @@ if __name__ == '__main__':
     
     print(f"time taken = {f-i} s")
     
-    #calculate fitting parameters for each set of superior errors associated to
-    #a specific dx:
+    #Parallel calculation of the fitting parameters for each set of superior 
+    #errors associated to a specific dx:
     p = mp.Pool()
     CB_parameters = p.map(fitter, sup_err_lists_set)
     p.close()
@@ -136,14 +144,14 @@ if __name__ == '__main__':
 
     C_list, b_list = np.array(CB_parameters).T
     
-    #mean C and b fitting parameters results.
+    #Mean C and b fitting parameters results
     Ch = np.mean(C_list).round(2)    
     bh = np.mean(b_list).round(2)
     
-    #only intercept in value at dx = 0
+    #Intercept expected b for C^0_b norm of spuerior error at dx = 0
     b0 = lin_fit(dx_list, b_list)[1]
     
-    #plot superior error fitting parameters over imposed dx
+    #Plot C^0_b norm of superior error fitting parameters over imposed dx
     fig, (ax1, ax2) = plt.subplots(2, 1)
     ax1.set_title("stability of fit parameters, "+title+" solution")
     ax1.plot(dx_list, C_list, "b.-", label = f"C = {Ch}")
@@ -155,7 +163,7 @@ if __name__ == '__main__':
     ax2.set(xlabel = "dx", ylabel= "b")
     ax2.legend()
     
-    #repeat procedure, but for H1 sobolev norm
+    #Repeat procedure, but for H^1 sobolev norm
     p = mp.Pool()
     CB_parameters = p.map(fitter, sup_H_err_lists_set)
     p.close()
@@ -166,7 +174,7 @@ if __name__ == '__main__':
     Ch = np.mean(C_list).round(2)    
     bh = np.mean(b_list).round(2)
     
-    #only intercept in value at dx = 0
+    #Intercept expected b value at dx = 0
     ip = lin_fit(dx_list, b_list)[1]
     
     fig, (ax1, ax2) = plt.subplots(2, 1)
